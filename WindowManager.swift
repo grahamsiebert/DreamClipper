@@ -357,6 +357,24 @@ class WindowManager: ObservableObject {
         let subrole = subroleRef as? String ?? ""
         print("Window subrole: \(subrole)")
 
+        // Exit full-screen mode if needed — full-screen windows cannot be resized
+        // and the recording toolbar would be hidden behind the full-screen window
+        var fullScreenRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(axWindow, "AXFullScreen" as CFString, &fullScreenRef) == .success,
+           let isFullScreen = fullScreenRef as? Bool, isFullScreen {
+            print("Window is in full-screen mode, exiting full-screen first...")
+            let exitResult = AXUIElementSetAttributeValue(axWindow, "AXFullScreen" as CFString, kCFBooleanFalse)
+            print("  Exit full-screen result: \(exitResult.rawValue) (\(exitResult == .success ? "SUCCESS" : "FAILED"))")
+            // Wait for the full-screen exit animation to complete
+            usleep(1_500_000) // 1.5 seconds
+            print("Full-screen exit animation complete")
+        }
+
+        // Raise the window to bring it to the front on the current desktop/Space
+        let raiseResult = AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
+        print("Raise window result: \(raiseResult.rawValue) (\(raiseResult == .success ? "SUCCESS" : "FAILED"))")
+        usleep(200_000) // 0.2s for raise to take effect
+
         // Get Screen Size
         guard let screen = NSScreen.main else { return nil }
         let screenFrame = screen.frame

@@ -243,8 +243,9 @@ class AppViewModel: ObservableObject {
             // The Accessibility API often requires the app to be frontmost for resize to work
             if let app = NSRunningApplication(processIdentifier: pid_t(window.ownerPid)) {
                 app.activate(options: [.activateIgnoringOtherApps])
-                // Give the system time to complete app activation
-                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+                // Give the system time to complete app activation and Space transition
+                // (switching desktops/Spaces takes ~0.7s for the animation)
+                try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
             }
 
             // Attempt to resize the window via Accessibility API
