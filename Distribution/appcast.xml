@@ -8,6 +8,25 @@
 
         <!-- Add new versions here (newest first) -->
         <item>
+            <title>Version 1.1.0</title>
+            <description><![CDATA[
+                <h2>Bug Fixes</h2>
+                <ul>
+                    <li>Windows on other Desktops/Spaces now appear in the window list</li>
+                    <li>Fixed window resize not working on first recording attempt</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sun, 09 Feb 2026 11:00:00 +0000</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.0/DreamClipper-1.1.0.dmg"
+                sparkle:edSignature="YdqtU6Oym/9Hr18TeaMuxAR4LTmEj2mT8cWnUbs778YUSjaDiBUCnT+O2Dumc8yfjVYypmyK8FXAGO4O4y20CA=="
+                length="3538805"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.0.0</title>
             <description><![CDATA[
                 <h2>Initial Release</h2>

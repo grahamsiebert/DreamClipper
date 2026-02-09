@@ -72,16 +72,17 @@ class WindowManager: ObservableObject {
             }
             
             var windows = allWindows.filter { window in
-                // 1. Must be on screen
-                guard window.isOnScreen else { return false }
-                
-                // 2. Must be a "normal" window (Layer 0)
+                // 1. Must be a "normal" window (Layer 0)
                 // This filters out menu bars, dock, notifications, overlays, etc.
+                // Note: We no longer check isOnScreen because it excludes windows on other desktops/spaces
                 guard window.windowLayer == 0 else { return false }
-                
+
+                // 2. Must have a valid frame (not minimized or hidden)
+                guard window.frame.width > 0 && window.frame.height > 0 else { return false }
+
                 // 3. Minimum size to filter out cursors, status items, empty frames
                 guard window.frame.width > 200 && window.frame.height > 200 else { return false }
-                
+
                 // 4. Exclude system apps and specific noise
                 let excludedApps = [
                     "Control Center", "Dock", "Wallpaper", "Window Server",

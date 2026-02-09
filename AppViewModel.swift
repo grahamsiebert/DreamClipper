@@ -239,6 +239,14 @@ class AppViewModel: ObservableObject {
 
         // Perform resize in background
         Task {
+            // CRITICAL: Activate the target app FIRST before attempting resize
+            // The Accessibility API often requires the app to be frontmost for resize to work
+            if let app = NSRunningApplication(processIdentifier: pid_t(window.ownerPid)) {
+                app.activate(options: [.activateIgnoringOtherApps])
+                // Give the system time to complete app activation
+                try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds
+            }
+
             // Attempt to resize the window via Accessibility API
             let requestedFrame = windowManager.resizeWindow(window)
             print("Resize requested, got frame: \(requestedFrame?.debugDescription ?? "nil")")
