@@ -8,6 +8,24 @@
 
         <!-- Add new versions here (newest first) -->
         <item>
+            <title>Version 1.1.1</title>
+            <description><![CDATA[
+                <h2>Improvements</h2>
+                <ul>
+                    <li>App now checks for updates automatically on launch</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sun, 09 Feb 2026 11:30:00 +0000</pubDate>
+            <sparkle:version>3</sparkle:version>
+            <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.1/DreamClipper-1.1.1.dmg"
+                sparkle:edSignature="7FTX5i4QxNIABnobry7OQgyXNoR1CUvXmnHaLsV3ELBIc1G6EmsJOXX7DvAdGMJQ8aGELITrWI9mhDbNarMaBg=="
+                length="3541255"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.1.0</title>
             <description><![CDATA[
                 <h2>Bug Fixes</h2>

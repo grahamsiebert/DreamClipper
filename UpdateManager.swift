@@ -18,6 +18,15 @@ class UpdateManager: ObservableObject {
         // Observe when updates can be checked
         updaterController.updater.publisher(for: \.canCheckForUpdates)
             .assign(to: &$canCheckForUpdates)
+
+        // Listen for launch-time update check
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("CheckForUpdatesOnLaunch"),
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.checkForUpdates()
+        }
     }
 
     /// Manually check for updates

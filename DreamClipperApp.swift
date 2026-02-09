@@ -41,7 +41,12 @@ struct CheckForUpdatesView: View {
 
 class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // App setup
+        // Check for updates on launch (after a brief delay to let the UI load)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
+            // This triggers Sparkle's automatic update check
+            // If an update is available, the user will be prompted
+            NotificationCenter.default.post(name: NSNotification.Name("CheckForUpdatesOnLaunch"), object: nil)
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
