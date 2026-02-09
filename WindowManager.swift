@@ -35,15 +35,22 @@ class WindowManager: ObservableObject {
     }
     
     func requestScreenRecordingPermission() {
-        // Triggering SCShareableContent.current forces the system to check permissions
-        // and add the app to the TCC list if not present.
+        // Use the official API to request screen capture access
+        // This adds the app to the Screen Recording list in System Settings
+        CGRequestScreenCaptureAccess()
+
+        // Also trigger SCShareableContent to ensure the app appears in the list
         Task {
             do {
                 _ = try await SCShareableContent.current
-                checkScreenRecordingPermission()
+                await MainActor.run {
+                    checkScreenRecordingPermission()
+                }
             } catch {
                 print("Permission trigger failed (expected if denied): \(error)")
-                checkScreenRecordingPermission()
+                await MainActor.run {
+                    checkScreenRecordingPermission()
+                }
             }
         }
     }
@@ -308,6 +315,35 @@ class WindowManager: ObservableObject {
         return nil
     }
     
+    /// Calculates the optimal 16:9 window size based on screen dimensions
+    /// Uses ~85% of available screen space while maintaining aspect ratio
+    static func calculateTargetSize(for screen: NSScreen) -> CGSize {
+        let visibleFrame = screen.visibleFrame
+        let scaleFactor: CGFloat = 0.85
+
+        let availableWidth = visibleFrame.width * scaleFactor
+        let availableHeight = visibleFrame.height * scaleFactor
+
+        // Calculate 16:9 dimensions that fit within available space
+        let aspectRatio: CGFloat = 16.0 / 9.0
+
+        // Try fitting to height first
+        var targetHeight = availableHeight
+        var targetWidth = targetHeight * aspectRatio
+
+        // If width exceeds available width, fit to width instead
+        if targetWidth > availableWidth {
+            targetWidth = availableWidth
+            targetHeight = targetWidth / aspectRatio
+        }
+
+        // Round to even numbers for video encoding compatibility
+        targetWidth = floor(targetWidth / 2) * 2
+        targetHeight = floor(targetHeight / 2) * 2
+
+        return CGSize(width: targetWidth, height: targetHeight)
+    }
+
     private func resizeAXWindow(_ axWindow: AXUIElement) -> CGRect? {
         // Check window role and subrole for debugging
         var roleRef: CFTypeRef?
@@ -320,13 +356,13 @@ class WindowManager: ObservableObject {
         let subrole = subroleRef as? String ?? ""
         print("Window subrole: \(subrole)")
 
-        // Target size
-        let targetSize = CGSize(width: 1920, height: 1080)
-
         // Get Screen Size
         guard let screen = NSScreen.main else { return nil }
         let screenFrame = screen.frame
         let visibleFrame = screen.visibleFrame
+
+        // Calculate target size dynamically based on screen
+        let targetSize = WindowManager.calculateTargetSize(for: screen)
 
         // Calculate menu bar height dynamically
         // visibleFrame excludes menu bar and dock (in Cocoa coordinates)
@@ -337,6 +373,7 @@ class WindowManager: ObservableObject {
         print("Screen full frame: \(screenFrame)")
         print("Screen visible frame: \(visibleFrame)")
         print("Calculated menu bar height: \(menuBarHeightQuartz)")
+        print("Dynamic target size: \(targetSize)")
 
         // Position at TOP of screen, just below menu bar (Quartz coordinates - Y=0 is top)
         // Center horizontally

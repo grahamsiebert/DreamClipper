@@ -19,6 +19,8 @@
 		010 /* RangeSlider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110 /* RangeSlider.swift */; };
 		011 /* DebugLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 111 /* DebugLogger.swift */; };
 		012 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 201 /* Assets.xcassets */; };
+		013 /* UpdateManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 112 /* UpdateManager.swift */; };
+		014 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 1001 /* Sparkle */; };
 		1D27CADC2F2A0C6E003B1ED1 /* DreamClipper.icon in Resources */ = {isa = PBXBuildFile; fileRef = 1D27CADB2F2A0C6E003B1ED1 /* DreamClipper.icon */; };
 /* End PBXBuildFile section */
 
@@ -34,6 +36,7 @@
 		109 /* RecordingOverlay.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingOverlay.swift; sourceTree = "<group>"; };
 		110 /* RangeSlider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RangeSlider.swift; sourceTree = "<group>"; };
 		111 /* DebugLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogger.swift; sourceTree = "<group>"; };
+		112 /* UpdateManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateManager.swift; sourceTree = "<group>"; };
 		1D27CADB2F2A0C6E003B1ED1 /* DreamClipper.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = DreamClipper.icon; sourceTree = "<group>"; };
 		201 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		301 /* DreamClipper.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = DreamClipper.entitlements; sourceTree = "<group>"; };
@@ -46,6 +49,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				014 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -75,6 +79,7 @@
 				109 /* RecordingOverlay.swift */,
 				110 /* RangeSlider.swift */,
 				111 /* DebugLogger.swift */,
+				112 /* UpdateManager.swift */,
 				201 /* Assets.xcassets */,
 				301 /* DreamClipper.entitlements */,
 				302 /* Info.plist */,
@@ -105,6 +110,9 @@
 			dependencies = (
 			);
 			name = DreamClipper;
+			packageProductDependencies = (
+				1001 /* Sparkle */,
+			);
 			productName = DreamClipper;
 			productReference = 401 /* DreamClipper.app */;
 			productType = "com.apple.product-type.application";
@@ -134,6 +142,9 @@
 			);
 			mainGroup = 600;
 			productRefGroup = 602 /* Products */;
+			packageReferences = (
+				1000 /* XCRemoteSwiftPackageReference "Sparkle" */,
+			);
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
@@ -170,6 +181,7 @@
 				009 /* RecordingOverlay.swift in Sources */,
 				010 /* RangeSlider.swift in Sources */,
 				011 /* DebugLogger.swift in Sources */,
+				013 /* UpdateManager.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -229,7 +241,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -287,7 +299,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;
@@ -309,7 +321,7 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 922D33U8V6;
 				CODE_SIGN_ENTITLEMENTS = DreamClipper.entitlements;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -347,7 +359,7 @@
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 922D33U8V6;
 				CODE_SIGN_ENTITLEMENTS = DreamClipper.entitlements;
-				ENABLE_APP_SANDBOX = YES;
+				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = Info.plist;
@@ -394,6 +406,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		1000 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		1001 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1000 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 900 /* Project object */;
 }

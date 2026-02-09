@@ -4,12 +4,27 @@ import AVKit
 import Combine
 import ScreenCaptureKit
 
-enum AppState {
+indirect enum AppState: Equatable {
     case selection
     case resizing
     case recording
     case editing
     case exporting
+    case done(exportedURL: URL)
+    case help(context: HelpContext, previousState: AppState)
+
+    static func == (lhs: AppState, rhs: AppState) -> Bool {
+        switch (lhs, rhs) {
+        case (.selection, .selection): return true
+        case (.resizing, .resizing): return true
+        case (.recording, .recording): return true
+        case (.editing, .editing): return true
+        case (.exporting, .exporting): return true
+        case (.done, .done): return true
+        case (.help, .help): return true
+        default: return false
+        }
+    }
 }
 
 @MainActor
@@ -36,16 +51,24 @@ class AppViewModel: ObservableObject {
 
     // Estimation State
     @Published private(set) var estimatedFileSizeString: String = "..."
-    
+    @Published private(set) var estimatedFileSizeMB: Double = 0
+    @Published private(set) var isCalculating: Bool = false
+    @Published var showSizeWarning: Bool = false
+
     private let estimator = GifConverter()
     private var estimationTask: Task<Void, Never>?
     private var cachedResult: GifResult?
     private var lastEstimationConfig: GifConfig?
     private var cancellables = Set<AnyCancellable>()
-    
+    private var previousSizeMB: Double = 0
+
     var estimatedFileSize: String {
         return estimatedFileSizeString
     }
+
+    /// Size threshold constants
+    static let sizeWarningThreshold: Double = 10.0  // MB - orange warning
+    static let sizeDangerThreshold: Double = 15.0   // MB - red warning + tooltip
     
     init() {
         setupObservers()
@@ -53,9 +76,10 @@ class AppViewModel: ObservableObject {
     
     private func setupObservers() {
         // Trigger estimation when any relevant parameter changes
+        // Short debounce for responsive feedback while avoiding excessive recalculations
         Publishers.CombineLatest4($trimStart, $trimEnd, $targetFramerate, $recordedVideoURL)
             .combineLatest($resolution)
-            .debounce(for: .seconds(0.5), scheduler: RunLoop.main)
+            .debounce(for: .seconds(0.3), scheduler: RunLoop.main)
             .sink { [weak self] _ in
                 self?.triggerEstimation()
             }
@@ -64,21 +88,25 @@ class AppViewModel: ObservableObject {
     
     func triggerEstimation() {
         estimationTask?.cancel()
-        
+
         guard let source = recordedVideoURL, state == .editing else {
             estimatedFileSizeString = "..."
-            return 
+            estimatedFileSizeMB = 0
+            isCalculating = false
+            return
         }
-        
+
         // Basic validation
         if trimEnd <= trimStart {
-             estimatedFileSizeString = "--"
-             return
+            estimatedFileSizeString = "--"
+            estimatedFileSizeMB = 0
+            isCalculating = false
+            return
         }
-        
+
         // Use sampling for estimation (every 3rd frame)
         let sampleFactor = 3
-        
+
         let config = GifConfig(
             sourceURL: source,
             startTime: trimStart,
@@ -87,44 +115,57 @@ class AppViewModel: ObservableObject {
             resolution: resolution,
             sampleFactor: sampleFactor
         )
-        
+
         estimatedFileSizeString = "Calculating..."
-        
+        isCalculating = true
+
+        // Store current size before recalculating (for auto-dismiss logic)
+        previousSizeMB = estimatedFileSizeMB
+
         estimationTask = Task {
             do {
                 // Background estimation using memory sink
                 // We use sampled encoding for speed
                 let result = try await estimator.convert(config: config, output: .memory(NSMutableData()))
-                
+
                 if !Task.isCancelled {
                     // Extrapolate size: (sampledSize * sampleFactor)
                     // This is a rough estimate since we skipped frames.
-                    // Actually, if we just count bytes of encoded frames, we need to multiply.
-                    // But wait, LZW delta compression relies on adjacent frames.
-                    // If we skipped frames, the deltas are bigger (less compression).
-                    // So simply multiplying by sampleFactor might OVER-estimate (because we encoded harder-to-compress frames).
-                    // Or UNDER-estimate? Hard to say. 
-                    // But for "Order of Magnitude" speed, it's acceptable.
-                    
-                    let estimatedBytes = Double(result.byteCount) * Double(sampleFactor)
+                    // GIF compression with LZW works on frame deltas, so skipping frames
+                    // affects compression ratios. We apply a correction factor to improve accuracy.
+                    let estimatedBytes = Double(result.byteCount) * Double(sampleFactor) * 0.85
                     let sizeInMB = estimatedBytes / 1024.0 / 1024.0
-                    
+
                     let displayString: String
                     if sizeInMB < 1.0 {
                         displayString = String(format: "~%.0f KB", sizeInMB * 1024)
                     } else {
                         displayString = String(format: "~%.1f MB", sizeInMB)
                     }
-                    
+
                     self.estimatedFileSizeString = displayString
-                    
+                    self.estimatedFileSizeMB = sizeInMB
+                    self.isCalculating = false
+
+                    // Auto-show warning if size exceeds danger threshold
+                    if sizeInMB >= Self.sizeDangerThreshold {
+                        self.showSizeWarning = true
+                    }
+
+                    // Auto-dismiss warning if size was reduced below danger threshold
+                    if self.previousSizeMB >= Self.sizeDangerThreshold && sizeInMB < Self.sizeDangerThreshold {
+                        self.showSizeWarning = false
+                    }
+
                     // Since we used sampling, we CANNOT use this data for export.
-                    self.cachedResult = nil 
+                    self.cachedResult = nil
                     self.lastEstimationConfig = config
                 }
             } catch {
                 if !Task.isCancelled {
                     self.estimatedFileSizeString = "Error"
+                    self.estimatedFileSizeMB = 0
+                    self.isCalculating = false
                     DebugLogger.shared.log("Estimation failed: \(error)")
                 }
             }
@@ -156,7 +197,8 @@ class AppViewModel: ObservableObject {
             // Fallback: If resize verification failed (e.g. permission issue),
             // calculate the theoretical frame so we at least try to match what we asked for.
             if let screen = NSScreen.main {
-                let targetSize = CGSize(width: 1920, height: 1080)
+                // Use dynamic target size calculation
+                let targetSize = WindowManager.calculateTargetSize(for: screen)
 
                 // Calculate menu bar height dynamically
                 let menuBarHeightQuartz = screen.frame.maxY - screen.visibleFrame.maxY
@@ -297,6 +339,19 @@ class AppViewModel: ObservableObject {
     var toolbarWindow: RecordingToolbarWindow?
     var resizingModalWindow: ResizingModalWindow?
 
+    func showHelp(context: HelpContext) {
+        // Store current state and transition to help
+        let currentState = state
+        state = .help(context: context, previousState: currentState)
+    }
+
+    func closeHelp() {
+        // Return to previous state
+        if case .help(_, let previousState) = state {
+            state = previousState
+        }
+    }
+
     func startRecording() {
         guard let window = selectedWindow, let scWindow = window.scWindow else { return }
 
@@ -363,36 +418,29 @@ class AppViewModel: ObservableObject {
     }
     
     func stopRecording() {
+        // Close overlay immediately when stop is clicked
+        overlayWindow?.closeAll()
+        overlayWindow = nil
+        toolbarWindow?.close()
+        toolbarWindow = nil
+        resizingModalWindow?.close()
+        resizingModalWindow = nil
+
+        // Show main window immediately
+        NSApp.activate(ignoringOtherApps: true)
+        for window in NSApp.windows {
+            if window is RecordingOverlayWindow || window is SecondaryOverlayWindow ||
+               window is RecordingToolbarWindow || window is ResizingModalWindow { continue }
+            window.makeKeyAndOrderFront(nil)
+        }
+
         Task {
             await screenRecorder.stopRecording()
 
-            // Cleanup UI
-            DispatchQueue.main.async {
-                self.overlayWindow?.closeAll()
-                self.overlayWindow = nil
-                self.toolbarWindow?.close()
-                self.toolbarWindow = nil
-                self.resizingModalWindow?.close()
-                self.resizingModalWindow = nil
-
-                // Show main window
-                // We need to find the main window. Since we ordered it out, it might be tricky.
-                // But NSApp.activate should bring it back if we unhide it.
-                NSApp.activate(ignoringOtherApps: true)
-                // We need to make sure the main window is visible.
-                // Let's assume the first window in NSApp.windows that is NOT our overlay/toolbar is the main one.
-                // Or we can just unhide all.
-                for window in NSApp.windows {
-                    if window is RecordingOverlayWindow || window is RecordingToolbarWindow || window is ResizingModalWindow { continue }
-                    window.makeKeyAndOrderFront(nil)
-                }
-            }
-            
             if let url = screenRecorder.recordingURL {
                 self.recordedVideoURL = url
                 self.setupPlayer(url: url)
                 state = .editing
-                // triggerEstimation will happen automatically via Combine subscription
             }
         }
     }
@@ -406,25 +454,25 @@ class AppViewModel: ObservableObject {
     }
     
     func discardRecording() {
+        // Close overlay immediately when discard is clicked
+        overlayWindow?.closeAll()
+        overlayWindow = nil
+        toolbarWindow?.close()
+        toolbarWindow = nil
+        resizingModalWindow?.close()
+        resizingModalWindow = nil
+
+        // Show main window immediately
+        NSApp.activate(ignoringOtherApps: true)
+        for window in NSApp.windows {
+            if window is RecordingOverlayWindow || window is SecondaryOverlayWindow ||
+               window is RecordingToolbarWindow || window is ResizingModalWindow { continue }
+            window.makeKeyAndOrderFront(nil)
+        }
+
         Task {
             await screenRecorder.discard()
-
-            DispatchQueue.main.async {
-                self.overlayWindow?.closeAll()
-                self.overlayWindow = nil
-                self.toolbarWindow?.close()
-                self.toolbarWindow = nil
-                self.resizingModalWindow?.close()
-                self.resizingModalWindow = nil
-
-                NSApp.activate(ignoringOtherApps: true)
-                for window in NSApp.windows {
-                    if window is RecordingOverlayWindow || window is RecordingToolbarWindow || window is ResizingModalWindow { continue }
-                    window.makeKeyAndOrderFront(nil)
-                }
-
-                self.reset()
-            }
+            reset()
         }
     }
     
@@ -515,12 +563,17 @@ class AppViewModel: ObservableObject {
                         sampleFactor: 1 // ALWAYS FULL QUALITY
                     )
                     
-                    // We skip the cache check because estimation now uses sampling, 
+                    // We skip the cache check because estimation now uses sampling,
                     // so the cached data is incomplete/invalid for final export.
                     DebugLogger.shared.log("Starting full export encode...")
-                    
-                     let _ = try? await self.gifConverter.convert(config: currentConfig, output: .file(target))
-                     await MainActor.run { self.state = .selection }
+
+                    do {
+                        let _ = try await self.gifConverter.convert(config: currentConfig, output: .file(target))
+                        await MainActor.run { self.state = .done(exportedURL: target) }
+                    } catch {
+                        // On error, go back to editing
+                        await MainActor.run { self.state = .editing }
+                    }
                 }
             }
         }
@@ -528,6 +581,7 @@ class AppViewModel: ObservableObject {
     
     func reset() {
         stopPlaybackLoop()
+        cleanupOverlays()
         state = .selection
         selectedWindow = nil
         recordedVideoURL = nil
@@ -535,8 +589,32 @@ class AppViewModel: ObservableObject {
 
         // Reset estimation state
         estimatedFileSizeString = "..."
+        estimatedFileSizeMB = 0
+        isCalculating = false
+        showSizeWarning = false
+        previousSizeMB = 0
         cachedResult = nil
         lastEstimationConfig = nil
+    }
+
+    /// Cleanup all overlay windows - call this when main window closes or app terminates
+    func cleanupOverlays() {
+        // First try normal cleanup through our references
+        overlayWindow?.closeAll()
+        overlayWindow = nil
+        toolbarWindow?.close()
+        toolbarWindow = nil
+        resizingModalWindow?.close()
+        resizingModalWindow = nil
+
+        // Fallback: iterate through all app windows and close any orphaned overlays
+        for window in NSApp.windows {
+            if window is RecordingOverlayWindow || window is SecondaryOverlayWindow ||
+               window is RecordingToolbarWindow || window is ResizingModalWindow {
+                window.orderOut(nil)
+                window.close()
+            }
+        }
     }
 
     // MARK: - Screen Detection and Coordinate Conversion

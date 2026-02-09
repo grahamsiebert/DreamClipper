@@ -195,17 +195,23 @@ class GifConverter: ObservableObject {
             }
             
             currentFrameIndex += 1
-            
+
+            // Update progress every 5 frames (frame extraction is ~80% of work)
             if currentFrameIndex % 5 == 0 {
-                // If sampling, effective progress is faster
-                let p = Double(currentFrameIndex) / Double(expectedFrameCount)
+                let p = Double(currentFrameIndex) / Double(expectedFrameCount) * 0.85
                 await MainActor.run { self.progress = p }
             }
         }
-        
+
+        // Update to 90% before finalizing
+        await MainActor.run { self.progress = 0.90 }
+
         if !CGImageDestinationFinalize(destination) {
             throw NSError(domain: "GifConverter", code: -3, userInfo: [NSLocalizedDescriptionKey: "Failed to finalize GIF"])
         }
+
+        // Complete!
+        await MainActor.run { self.progress = 1.0 }
         
         let byteCount: Int
         if let data = outputData {
