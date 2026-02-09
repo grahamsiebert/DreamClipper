@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+    <channel>
+        <title>DreamClipper Updates</title>
+        <link>https://raw.githubusercontent.com/grahamsiebert/DreamClipper/main/Distribution/appcast.xml</link>
+        <description>Most recent updates to DreamClipper</description>
+        <language>en</language>
+
+        <!-- Add new versions here (newest first) -->
+        <item>
+            <title>Version 1.1.0</title>
+            <description><![CDATA[
+                <h2>Bug Fixes</h2>
+                <ul>
+                    <li>Windows on other Desktops/Spaces now appear in the window list</li>
+                    <li>Fixed window resize not working on first recording attempt</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sun, 09 Feb 2026 11:00:00 +0000</pubDate>
+            <sparkle:version>2</sparkle:version>
+            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.0/DreamClipper-1.1.0.dmg"
+                sparkle:edSignature="YdqtU6Oym/9Hr18TeaMuxAR4LTmEj2mT8cWnUbs778YUSjaDiBUCnT+O2Dumc8yfjVYypmyK8FXAGO4O4y20CA=="
+                length="3538805"
+                type="application/octet-stream" />
+        </item>
+        <item>
+            <title>Version 1.0.0</title>
+            <description><![CDATA[
+                <h2>Initial Release</h2>
+                <ul>
+                    <li>Window-based screen recording</li>
+                    <li>GIF export with trim and frame rate controls</li>
+                    <li>Resolution options (1080p, 720p)</li>
+                    <li>Real-time file size estimation</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sun, 09 Feb 2026 09:30:00 +0000</pubDate>
+            <sparkle:version>1</sparkle:version>
+            <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.0.0/DreamClipper-1.0.0.dmg"
+                sparkle:edSignature="jqRN91XaAc+MVPUrHGxQMn9AGGD8GOG1KgCPcHS3dAFId7x1QXUTaO3drmvkehTpNWImn83oKe1D1csF6pzOCA=="
+                length="3674792"
+                type="application/octet-stream" />
+        </item>
+    </channel>
+</rss>
