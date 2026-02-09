@@ -1548,6 +1548,12 @@ struct FAQContent: View {
 }
 
 struct AboutContent: View {
+    private var appVersion: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "Unknown"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "Unknown"
+        return "Version \(version) (\(build))"
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 28) {
             // App Info
@@ -1560,7 +1566,7 @@ struct AboutContent: View {
                     .font(.system(size: 14))
                     .foregroundColor(Theme.textSecondary)
 
-                Text("Version 1.0.0")
+                Text(appVersion)
                     .font(.system(size: 13))
                     .foregroundColor(Theme.textTertiary)
             }
@@ -1577,6 +1583,7 @@ struct AboutContent: View {
                     HelpBullet(title: "Trim & Edit", description: "Precise trimming controls and export settings")
                     HelpBullet(title: "Real-time Preview", description: "See your changes before exporting")
                     HelpBullet(title: "File Size Estimation", description: "Know your GIF size before exporting")
+                    HelpBullet(title: "Automatic Updates", description: "Get notified when new versions are available")
                 }
             }
 
