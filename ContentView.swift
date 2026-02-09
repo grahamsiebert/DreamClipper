@@ -235,6 +235,7 @@ struct OnboardingStep: View {
 struct SelectionView: View {
     @ObservedObject var viewModel: AppViewModel
     @ObservedObject var windowManager: WindowManager
+    @EnvironmentObject var updateManager: UpdateManager
 
     let columns = [
         GridItem(.adaptive(minimum: 200, maximum: 250), spacing: 20)
@@ -248,6 +249,27 @@ struct SelectionView: View {
                     .font(.system(size: 24, weight: .bold))
                     .foregroundColor(Theme.text)
                 Spacer()
+
+                // Update Available Button (subtle indicator)
+                if updateManager.updateAvailable {
+                    Button(action: {
+                        updateManager.checkForUpdates()
+                    }) {
+                        HStack(spacing: 6) {
+                            Image(systemName: "arrow.down.circle.fill")
+                                .font(.system(size: 14))
+                            Text("Update Available")
+                                .font(.system(size: 13, weight: .medium))
+                        }
+                        .foregroundColor(Theme.accent)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 6)
+                        .background(Theme.accent.opacity(0.12))
+                        .cornerRadius(Theme.cornerRadiusSmall)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Click to update DreamClipper")
+                }
 
                 // Help Button
                 Button(action: {

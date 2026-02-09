@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" xmlns:dc="http://purl.org/dc/elements/1.1/">
+  <channel>
+    <title>DreamClipper Updates</title>
+    <link>https://yourdomain.com/appcast.xml</link>
+    <description>Most recent updates to DreamClipper</description>
+    <language>en</language>
+
+    <!-- Latest version should be first -->
+    <item>
+      <title>Version 1.0</title>
+      <sparkle:version>1</sparkle:version>
+      <sparkle:shortVersionString>1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <description><![CDATA[
+        <style>
+          body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+          h2 { font-size: 16px; margin-bottom: 8px; }
+          ul { margin: 0; padding-left: 20px; }
+          li { margin: 4px 0; }
+        </style>
+        <h2>Initial Release</h2>
+        <ul>
+          <li>Record any window on your screen</li>
+          <li>Auto-resize windows to 1080p for perfect recordings</li>
+          <li>Export as GIF or video</li>
+          <li>Trim recordings before export</li>
+        </ul>
+      ]]></description>
+      <pubDate>Thu, 06 Feb 2026 12:00:00 +0000</pubDate>
+      <enclosure
+        url="https://yourdomain.com/releases/DreamClipper-1.0.dmg"
+        sparkle:edSignature="PASTE_SIGNATURE_HERE"
+        length="0"
+        type="application/octet-stream"/>
+    </item>
+
+  </channel>
+</rss>

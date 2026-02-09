@@ -4,7 +4,25 @@
       "Bash(xcodebuild:*)",
       "Bash(swift build:*)",
       "Bash(ls:*)",
-      "Bash(open:*)"
+      "Bash(open:*)",
+      "Bash(plutil:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix App Store validation errors\n\n- Add LSApplicationCategoryType \\(public.app-category.video\\) to Info.plist\n- Enable app sandbox with entitlements file\n- Update LSMinimumSystemVersion to 26.0 to match deployment target\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(chmod:*)",
+      "Bash(security find-identity:*)",
+      "Bash(/tmp/Sparkle/bin/sign_update:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git remote add:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(gh repo create:*)",
+      "Bash(gh release create:*)",
+      "Bash(./build-release.sh:*)",
+      "Bash(/tmp/Sparkle-2.6.4/bin/sign_update:*)",
+      "Bash(curl:*)",
+      "Bash(gh api:*)",
+      "Bash(gh repo view:*)",
+      "Bash(gh repo edit:*)"
     ]
   }
 }

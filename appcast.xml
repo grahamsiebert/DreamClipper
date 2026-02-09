@@ -8,6 +8,25 @@
 
         <!-- Add new versions here (newest first) -->
         <item>
+            <title>Version 1.1.2</title>
+            <description><![CDATA[
+                <h2>Improvements</h2>
+                <ul>
+                    <li>Update notifications are now subtle and non-intrusive</li>
+                    <li>A small "Update Available" button appears in the header when updates are ready</li>
+                </ul>
+            ]]></description>
+            <pubDate>Sun, 09 Feb 2026 12:00:00 +0000</pubDate>
+            <sparkle:version>4</sparkle:version>
+            <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.2/DreamClipper-1.1.2.dmg"
+                sparkle:edSignature="/I5pjevZOLaW7/ppR5SuyNpiAN0FJc6i7XzwDJGdLBm5zL3KA0kV2h/0zT7SgC7LM2LWIVqTF6d6BQ6H2u2iCg=="
+                length="3561002"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.1.1</title>
             <description><![CDATA[
                 <h2>Improvements</h2>
