@@ -14,9 +14,9 @@
 		<key>CFBundleIdentifier</key>
 		<string>com.dreamclipper.gifcreator</string>
 		<key>CFBundleShortVersionString</key>
-		<string>1.1.0</string>
+		<string>1.1.4</string>
 		<key>CFBundleVersion</key>
-		<string>2</string>
+		<string>6</string>
 		<key>SigningIdentity</key>
 		<string>Apple Development: Graham Siebert (TLRS5HJ34Y)</string>
 		<key>Team</key>
@@ -25,7 +25,7 @@
 	<key>ArchiveVersion</key>
 	<integer>2</integer>
 	<key>CreationDate</key>
-	<date>2026-02-09T09:56:05Z</date>
+	<date>2026-02-09T13:36:57Z</date>
 	<key>Name</key>
 	<string>DreamClipper</string>
 	<key>SchemeName</key>

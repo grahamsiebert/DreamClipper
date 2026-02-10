@@ -345,6 +345,163 @@ class WindowManager: ObservableObject {
         return CGSize(width: targetWidth, height: targetHeight)
     }
 
+    /// Finds the AX window element matching the given WindowInfo using title matching
+    private func findAXWindow(_ window: WindowInfo) -> AXUIElement? {
+        let appRef = AXUIElementCreateApplication(window.pid)
+        var windowsRef: CFTypeRef?
+        let result = AXUIElementCopyAttributeValue(appRef, kAXWindowsAttribute as CFString, &windowsRef)
+
+        guard result == .success, let windowsList = windowsRef as? [AXUIElement] else { return nil }
+
+        // Title match
+        for axWindow in windowsList {
+            var titleRef: CFTypeRef?
+            AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleRef)
+            let title = titleRef as? String ?? ""
+            if title == window.name { return axWindow }
+        }
+
+        // Filename-based match
+        let baseName = (window.name as NSString).deletingPathExtension
+        for axWindow in windowsList {
+            var titleRef: CFTypeRef?
+            AXUIElementCopyAttributeValue(axWindow, kAXTitleAttribute as CFString, &titleRef)
+            let title = titleRef as? String ?? ""
+            if title.contains(baseName) || baseName.contains(title) { return axWindow }
+        }
+
+        // Single window fallback
+        if windowsList.count == 1 { return windowsList[0] }
+
+        return nil
+    }
+
+    /// Raises the window to make it the app's frontmost window.
+    /// Works cross-Space — call this BEFORE activate() to ensure macOS switches to the correct Space.
+    func raiseWindow(_ window: WindowInfo) {
+        guard hasAccessibilityPermission else { return }
+        guard let axWindow = findAXWindow(window) else {
+            print("raiseWindow: could not find AX window for '\(window.name)'")
+            return
+        }
+        let result = AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
+        print("raiseWindow '\(window.name)': \(result == .success ? "SUCCESS" : "FAILED (\(result.rawValue))")")
+    }
+
+    /// Checks if the window is in macOS native full-screen mode and exits if so.
+    /// Returns true if the window was full-screen (caller should wait ~2s for the exit animation).
+    func exitFullScreenIfNeeded(_ window: WindowInfo) -> Bool {
+        guard hasAccessibilityPermission else { return false }
+        guard let axWindow = findAXWindow(window) else {
+            print("exitFullScreenIfNeeded: could not find AX window for '\(window.name)'")
+            return false
+        }
+
+        var fullScreenRef: CFTypeRef?
+        if AXUIElementCopyAttributeValue(axWindow, "AXFullScreen" as CFString, &fullScreenRef) == .success,
+           let isFullScreen = fullScreenRef as? Bool, isFullScreen {
+            print("Window '\(window.name)' is FULL-SCREEN — exiting...")
+            let exitResult = AXUIElementSetAttributeValue(axWindow, "AXFullScreen" as CFString, kCFBooleanFalse)
+            print("  Exit full-screen result: \(exitResult == .success ? "SUCCESS" : "FAILED (\(exitResult.rawValue))")")
+            return true
+        }
+
+        print("Window '\(window.name)' is not full-screen")
+        return false
+    }
+
+    // MARK: - Window-Under-Cursor Detection
+
+    /// Lightweight struct for a window detected under the cursor via CGWindowList
+    struct CursorWindowInfo {
+        let windowID: Int
+        let frame: CGRect        // Quartz coordinates (top-left origin)
+        let ownerPID: Int32
+        let appName: String
+        let title: String
+    }
+
+    /// Finds the topmost window under a given screen point (Quartz coordinates).
+    /// Filters out DreamClipper's own windows, system elements, and tiny windows.
+    func windowUnderCursor(at point: CGPoint, excludingPIDs: [Int32] = []) -> CursorWindowInfo? {
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+
+        let options = CGWindowListOption(arrayLiteral: .optionOnScreenOnly, .excludeDesktopElements)
+        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+            return nil
+        }
+
+        // CGWindowListCopyWindowInfo returns windows in front-to-back order
+        for dict in windowList {
+            guard let windowID = dict[kCGWindowNumber as String] as? Int,
+                  let pid = dict[kCGWindowOwnerPID as String] as? Int32,
+                  let boundsDict = dict[kCGWindowBounds as String] as? [String: Any],
+                  let bounds = CGRect(dictionaryRepresentation: boundsDict as CFDictionary),
+                  let layer = dict[kCGWindowLayer as String] as? Int else {
+                continue
+            }
+
+            // Skip our own windows
+            if pid == ownPID { continue }
+
+            // Skip excluded PIDs
+            if excludingPIDs.contains(pid) { continue }
+
+            // Only consider normal windows (layer 0)
+            if layer != 0 { continue }
+
+            // Skip tiny windows
+            if bounds.width < 100 || bounds.height < 100 { continue }
+
+            let appName = dict[kCGWindowOwnerName as String] as? String ?? "Unknown"
+            let title = dict[kCGWindowName as String] as? String ?? ""
+
+            // Skip system apps
+            let excludedApps = [
+                "Control Center", "Dock", "Wallpaper", "Window Server",
+                "Notification Center", "SystemUIServer", "LoginWindow",
+                "ScreenSaverEngine", "Menubar", "Spotlight", "underbelly"
+            ]
+            if excludedApps.contains(appName) { continue }
+
+            // Check if point is inside this window's frame
+            if bounds.contains(point) {
+                return CursorWindowInfo(
+                    windowID: windowID,
+                    frame: bounds,
+                    ownerPID: pid,
+                    appName: appName,
+                    title: title
+                )
+            }
+        }
+
+        return nil
+    }
+
+    /// Cross-references a CGWindowList window ID to an SCWindow from SCShareableContent.
+    /// Returns a WindowInfo with the SCWindow reference needed for recording.
+    func fetchSCWindowForCGWindow(_ cgWindowInfo: CursorWindowInfo) async -> WindowInfo? {
+        do {
+            let content = try await SCShareableContent.current
+            if let scWindow = content.windows.first(where: { Int($0.windowID) == cgWindowInfo.windowID }) {
+                return WindowInfo(
+                    id: cgWindowInfo.windowID,
+                    name: scWindow.title ?? cgWindowInfo.title,
+                    appName: cgWindowInfo.appName,
+                    frame: scWindow.frame,
+                    pid: cgWindowInfo.ownerPID,
+                    ownerPid: cgWindowInfo.ownerPID,
+                    scWindow: scWindow,
+                    image: nil
+                )
+            }
+        } catch {
+            print("Failed to fetch SCWindow for window ID \(cgWindowInfo.windowID): \(error)")
+        }
+        return nil
+    }
+
     private func resizeAXWindow(_ axWindow: AXUIElement) -> CGRect? {
         // Check window role and subrole for debugging
         var roleRef: CFTypeRef?
@@ -356,24 +513,6 @@ class WindowManager: ObservableObject {
         AXUIElementCopyAttributeValue(axWindow, kAXSubroleAttribute as CFString, &subroleRef)
         let subrole = subroleRef as? String ?? ""
         print("Window subrole: \(subrole)")
-
-        // Exit full-screen mode if needed — full-screen windows cannot be resized
-        // and the recording toolbar would be hidden behind the full-screen window
-        var fullScreenRef: CFTypeRef?
-        if AXUIElementCopyAttributeValue(axWindow, "AXFullScreen" as CFString, &fullScreenRef) == .success,
-           let isFullScreen = fullScreenRef as? Bool, isFullScreen {
-            print("Window is in full-screen mode, exiting full-screen first...")
-            let exitResult = AXUIElementSetAttributeValue(axWindow, "AXFullScreen" as CFString, kCFBooleanFalse)
-            print("  Exit full-screen result: \(exitResult.rawValue) (\(exitResult == .success ? "SUCCESS" : "FAILED"))")
-            // Wait for the full-screen exit animation to complete
-            usleep(1_500_000) // 1.5 seconds
-            print("Full-screen exit animation complete")
-        }
-
-        // Raise the window to bring it to the front on the current desktop/Space
-        let raiseResult = AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
-        print("Raise window result: \(raiseResult.rawValue) (\(raiseResult == .success ? "SUCCESS" : "FAILED"))")
-        usleep(200_000) // 0.2s for raise to take effect
 
         // Get Screen Size
         guard let screen = NSScreen.main else { return nil }

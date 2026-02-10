@@ -6,6 +6,8 @@ import ScreenCaptureKit
 
 indirect enum AppState: Equatable {
     case selection
+    case picking       // Picker overlay is active, user hovering over windows
+    case confirming    // Window selected, showing confirmation HUD
     case resizing
     case recording
     case editing
@@ -16,6 +18,8 @@ indirect enum AppState: Equatable {
     static func == (lhs: AppState, rhs: AppState) -> Bool {
         switch (lhs, rhs) {
         case (.selection, .selection): return true
+        case (.picking, .picking): return true
+        case (.confirming, .confirming): return true
         case (.resizing, .resizing): return true
         case (.recording, .recording): return true
         case (.editing, .editing): return true
@@ -48,6 +52,9 @@ class AppViewModel: ObservableObject {
 
     // Resize warning message
     @Published var resizeFailureMessage: String? = nil
+
+    // Update manager (set from DreamClipperApp)
+    var updateManager: UpdateManager?
 
     // Estimation State
     @Published private(set) var estimatedFileSizeString: String = "..."
@@ -228,27 +235,36 @@ class AppViewModel: ObservableObject {
         print("Starting resize and record flow for window: \(window.name)")
         print("Initial window frame: \(window.frame)")
 
-        // Show resizing modal
-        let modal = ResizingModalWindow()
-        modal.contentView = NSHostingView(rootView: ResizingModalView(viewModel: self))
-        modal.orderFront(nil)
-        self.resizingModalWindow = modal
+        // Switch toolbar to resizing phase (toolbar already visible)
+        toolbarPhase = .resizing
 
-        // Hide main window
-        NSApp.windows.first?.orderOut(nil)
+        // Ensure main window is hidden
+        hideMainWindow()
 
         // Perform resize in background
         Task {
-            // CRITICAL: Activate the target app FIRST before attempting resize
-            // The Accessibility API often requires the app to be frontmost for resize to work
-            if let app = NSRunningApplication(processIdentifier: pid_t(window.ownerPid)) {
-                app.activate(options: [.activateIgnoringOtherApps])
-                // Give the system time to complete app activation and Space transition
-                // (switching desktops/Spaces takes ~0.7s for the animation)
-                try? await Task.sleep(nanoseconds: 800_000_000) // 0.8 seconds
+            // Step 1: Exit full-screen if the window is in native macOS full-screen mode
+            // Must happen BEFORE activate/resize — full-screen exit destroys the Space
+            let wasFullScreen = windowManager.exitFullScreenIfNeeded(window)
+            if wasFullScreen {
+                // Full-screen exit animation + Space destruction takes ~2s
+                try? await Task.sleep(nanoseconds: 2_000_000_000)
             }
 
-            // Attempt to resize the window via Accessibility API
+            // Step 2: Raise the specific target window to make it the app's frontmost window
+            // This works cross-Space and ensures activate() switches to the correct Space
+            windowManager.raiseWindow(window)
+
+            // Step 3: Activate the target app — macOS will switch to the Space
+            // where the raised (frontmost) window lives
+            if let app = NSRunningApplication(processIdentifier: pid_t(window.ownerPid)) {
+                app.activate(options: [.activateIgnoringOtherApps])
+            }
+
+            // Step 4: Wait for Space transition animation (~1s)
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+
+            // Step 5: Resize the window via Accessibility API
             let requestedFrame = windowManager.resizeWindow(window)
             print("Resize requested, got frame: \(requestedFrame?.debugDescription ?? "nil")")
 
@@ -306,9 +322,8 @@ class AppViewModel: ObservableObject {
                     print("Final pre-recording window frame: \(final.frame)")
                 }
 
-                // Close resizing modal
-                self.resizingModalWindow?.close()
-                self.resizingModalWindow = nil
+                // Switch toolbar to recording phase
+                self.toolbarPhase = .recording
 
                 // Now start recording with updated window frame
                 print("Starting recording NOW")
@@ -345,19 +360,37 @@ class AppViewModel: ObservableObject {
     }
 
     var overlayWindow: RecordingOverlayWindow?
-    var toolbarWindow: RecordingToolbarWindow?
-    var resizingModalWindow: ResizingModalWindow?
+    var floatingToolbarWindow: FloatingToolbarWindow?
+
+    // Picker windows
+    var pickerOverlayWindows: [WindowPickerOverlayWindow] = []
+
+    @Published var toolbarPhase: ToolbarPhase = .ready
+    @Published var hoveredWindowInfo: WindowManager.CursorWindowInfo?
 
     func showHelp(context: HelpContext) {
+        // If we are in picking mode, cancel it so we return to "Ready" state
+        if state == .picking {
+            cancelPicker()
+        }
+        
         // Store current state and transition to help
         let currentState = state
         state = .help(context: context, previousState: currentState)
+        
+        // Show main window to display help
+        showMainWindow()
     }
 
     func closeHelp() {
         // Return to previous state
         if case .help(_, let previousState) = state {
             state = previousState
+            
+            // If returning to a toolbar-only state, hide the main window again
+            if [.selection, .picking].contains(state) {
+                hideMainWindow()
+            }
         }
     }
 
@@ -374,25 +407,12 @@ class AppViewModel: ObservableObject {
         print("Using windowFrame: \(windowFrame)")
 
         // Hide main window
-        NSApp.windows.first?.orderOut(nil)
+        hideMainWindow()
 
         // Show Overlay
-        // SCWindow.frame uses Quartz display coordinates:
-        //   - Origin at TOP-LEFT of the primary display
-        //   - Y increases DOWNWARD
-        // NSView/NSWindow use Cocoa coordinates:
-        //   - Origin at BOTTOM-LEFT of each screen
-        //   - Y increases UPWARD
-        //
-        // To convert from Quartz to Cocoa coordinates:
-        //   1. Find which screen the window is on
-        //   2. Convert coordinates relative to that screen's Cocoa coordinate space
-
-        // Find which screen contains the window (or the screen with the most overlap)
         let targetScreen = findScreenForWindow(windowFrame: windowFrame)
         print("Target screen: \(targetScreen.frame)")
 
-        // Convert window frame from Quartz to Cocoa coordinates
         let holeRect = convertQuartzToCocoa(quartzRect: windowFrame, targetScreen: targetScreen)
         print("Hole rect (Cocoa): \(holeRect)")
 
@@ -400,22 +420,12 @@ class AppViewModel: ObservableObject {
         overlay.orderFrontAll()
         self.overlayWindow = overlay
 
-        // Show Toolbar - position on the same screen as the window
-        let toolbar = RecordingToolbarWindow()
-        toolbar.contentView = NSHostingView(rootView: RecordingToolbarView(viewModel: self))
-        // Position toolbar at bottom center of the target screen
-        let screenFrame = targetScreen.visibleFrame
-        let toolbarWidth: CGFloat = 220
-        let toolbarHeight: CGFloat = 70
-        let x = screenFrame.midX - (toolbarWidth / 2)
-        let y = screenFrame.minY + 50 // Position near bottom of screen
-        toolbar.setFrame(NSRect(x: x, y: y, width: toolbarWidth, height: toolbarHeight), display: true)
-        toolbar.orderFront(nil)
-        self.toolbarWindow = toolbar
+        // Switch toolbar to recording phase
+        toolbarPhase = .recording
+        // Toolbar is already shown from picker flow — just ensure it's visible
+        floatingToolbarWindow?.orderFront(nil)
 
         // Bring selected window to front
-        // We can't easily force another app's window to front without Accessibility API,
-        // but we can try to activate the app.
         if let app = NSRunningApplication(processIdentifier: pid_t(window.ownerPid)) {
             app.activate()
         }
@@ -427,21 +437,13 @@ class AppViewModel: ObservableObject {
     }
     
     func stopRecording() {
-        // Close overlay immediately when stop is clicked
+        // Close overlay and toolbar immediately
         overlayWindow?.closeAll()
         overlayWindow = nil
-        toolbarWindow?.close()
-        toolbarWindow = nil
-        resizingModalWindow?.close()
-        resizingModalWindow = nil
+        closeFloatingToolbar()
 
         // Show main window immediately
-        NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows {
-            if window is RecordingOverlayWindow || window is SecondaryOverlayWindow ||
-               window is RecordingToolbarWindow || window is ResizingModalWindow { continue }
-            window.makeKeyAndOrderFront(nil)
-        }
+        showMainWindow()
 
         Task {
             await screenRecorder.stopRecording()
@@ -463,21 +465,13 @@ class AppViewModel: ObservableObject {
     }
     
     func discardRecording() {
-        // Close overlay immediately when discard is clicked
+        // Close overlay and toolbar immediately
         overlayWindow?.closeAll()
         overlayWindow = nil
-        toolbarWindow?.close()
-        toolbarWindow = nil
-        resizingModalWindow?.close()
-        resizingModalWindow = nil
+        closeFloatingToolbar()
 
         // Show main window immediately
-        NSApp.activate(ignoringOtherApps: true)
-        for window in NSApp.windows {
-            if window is RecordingOverlayWindow || window is SecondaryOverlayWindow ||
-               window is RecordingToolbarWindow || window is ResizingModalWindow { continue }
-            window.makeKeyAndOrderFront(nil)
-        }
+        showMainWindow()
 
         Task {
             await screenRecorder.discard()
@@ -591,10 +585,16 @@ class AppViewModel: ObservableObject {
     func reset() {
         stopPlaybackLoop()
         cleanupOverlays()
+        
+        // Reset to initial ready state
         state = .selection
+        toolbarPhase = .ready
+        showFloatingToolbar()
+        
         selectedWindow = nil
         recordedVideoURL = nil
         player = nil
+        hoveredWindowInfo = nil
 
         // Reset estimation state
         estimatedFileSizeString = "..."
@@ -606,31 +606,208 @@ class AppViewModel: ObservableObject {
         lastEstimationConfig = nil
     }
 
+    // MARK: - Floating Toolbar Helpers
+
+    /// Creates and shows the unified floating toolbar at bottom-center of screen
+    /// Creates and shows the unified floating toolbar
+    func showFloatingToolbar() {
+        if floatingToolbarWindow == nil {
+            let toolbar = FloatingToolbarWindow()
+            toolbar.contentView = NSHostingView(rootView: FloatingToolbarView(viewModel: self))
+            toolbar.positionOnScreen() // Use new helper for full-width positioning
+            toolbar.orderFront(nil)
+            self.floatingToolbarWindow = toolbar
+        } else {
+            floatingToolbarWindow?.orderFront(nil)
+        }
+    }
+
+    /// Closes and releases the floating toolbar
+    func closeFloatingToolbar() {
+        floatingToolbarWindow?.orderOut(nil)
+        floatingToolbarWindow?.close()
+        floatingToolbarWindow = nil
+    }
+
+    // MARK: - Main Window Helpers
+
+    /// Hides the main app window (used when entering picker/recording flow)
+    func hideMainWindow() {
+        for window in NSApp.windows {
+            if window is RecordingOverlayWindow || window is SecondaryOverlayWindow ||
+               window is FloatingToolbarWindow || window is WindowPickerOverlayWindow { continue }
+            window.orderOut(nil)
+        }
+    }
+
+    /// Shows the main app window (used when returning from picker/recording flow)
+    func showMainWindow() {
+        NSApp.activate(ignoringOtherApps: true)
+        for window in NSApp.windows {
+            if window is RecordingOverlayWindow || window is SecondaryOverlayWindow ||
+               window is FloatingToolbarWindow || window is WindowPickerOverlayWindow { continue }
+            window.makeKeyAndOrderFront(nil)
+        }
+    }
+
     /// Cleanup all overlay windows - call this when main window closes or app terminates
     func cleanupOverlays() {
         // First try normal cleanup through our references
         overlayWindow?.closeAll()
         overlayWindow = nil
-        toolbarWindow?.close()
-        toolbarWindow = nil
-        resizingModalWindow?.close()
-        resizingModalWindow = nil
+        closeFloatingToolbar()
+
+        // Picker windows
+        for window in pickerOverlayWindows {
+            window.orderOut(nil)
+            window.close()
+        }
+        pickerOverlayWindows.removeAll()
 
         // Fallback: iterate through all app windows and close any orphaned overlays
         for window in NSApp.windows {
-            if window is RecordingOverlayWindow || window is SecondaryOverlayWindow ||
-               window is RecordingToolbarWindow || window is ResizingModalWindow {
-                window.orderOut(nil)
-                window.close()
-            }
+             if window is RecordingOverlayWindow || window is SecondaryOverlayWindow ||
+                window is FloatingToolbarWindow ||
+                window is WindowPickerOverlayWindow {
+                 window.orderOut(nil)
+                 window.close()
+             }
         }
+    }
+
+    // MARK: - Window Picker Flow
+
+    func startPicking() {
+        state = .picking
+        hoveredWindowInfo = nil
+        toolbarPhase = .picking
+
+        // Hide main window
+        hideMainWindow()
+
+        // Create and show picker overlays (one per screen)
+        for screen in NSScreen.screens {
+            let overlay = WindowPickerOverlayWindow(screen: screen)
+            overlay.pickerView.onMouseMoved = { [weak self, weak overlay] locationInView in
+                guard let overlay = overlay else { return nil }
+                return self?.pickerMouseMoved(at: locationInView, in: overlay)
+            }
+            overlay.pickerView.onMouseClicked = { [weak self] in
+                self?.pickerMouseClicked()
+            }
+            overlay.pickerView.onMouseExited = { [weak self] in
+                self?.hoveredWindowInfo = nil
+            }
+            overlay.orderFront(nil)
+            self.pickerOverlayWindows.append(overlay)
+        }
+
+        // Create and show the floating toolbar
+        showFloatingToolbar()
+    }
+
+    /// Called by the overlay NSView on mouseMoved. Returns the highlight rect in Cocoa coordinates for drawing.
+    func pickerMouseMoved(at locationInView: NSPoint, in overlayWindow: WindowPickerOverlayWindow) -> CGRect? {
+        // No need to guard pickerOverlayWindow here as we pass it in
+
+        // Convert NSView point to screen coordinates (Cocoa)
+        let screenPoint = overlayWindow.convertPoint(toScreen: locationInView)
+
+        // Convert to Quartz coordinates for CGWindowList lookup
+        guard let primaryScreen = NSScreen.screens.first else { return nil }
+        let quartzY = primaryScreen.frame.height - screenPoint.y
+        let quartzPoint = CGPoint(x: screenPoint.x, y: quartzY)
+
+        // Find window under cursor
+        let ownPID = ProcessInfo.processInfo.processIdentifier
+        guard let info = windowManager.windowUnderCursor(at: quartzPoint, excludingPIDs: [ownPID]) else {
+            hoveredWindowInfo = nil
+            return nil
+        }
+
+        hoveredWindowInfo = info
+
+        // Convert the window's Quartz frame to Cocoa coordinates for the overlay to draw
+        let targetScreen = findScreenForWindow(windowFrame: info.frame)
+        let cocoaRect = convertQuartzToCocoa(quartzRect: info.frame, targetScreen: targetScreen)
+
+        // Convert from global screen coordinates to the overlay window's view coordinates
+        let viewOrigin = overlayWindow.convertPoint(fromScreen: cocoaRect.origin)
+        return CGRect(origin: viewOrigin, size: cocoaRect.size)
+    }
+
+    /// Called by the overlay NSView on mouseDown.
+    func pickerMouseClicked() {
+        guard let info = hoveredWindowInfo else { return }
+
+        // Close all picker overlays
+        for window in pickerOverlayWindows {
+            window.orderOut(nil)
+            window.close()
+        }
+        pickerOverlayWindows.removeAll()
+
+        // Fetch the SCWindow reference and build WindowInfo
+        Task {
+            if let windowInfo = await windowManager.fetchSCWindowForCGWindow(info) {
+                self.selectedWindow = windowInfo
+            } else {
+                // Fallback: create WindowInfo without SCWindow (will try to match later)
+                self.selectedWindow = WindowInfo(
+                    id: info.windowID,
+                    name: info.title,
+                    appName: info.appName,
+                    frame: info.frame,
+                    pid: info.ownerPID,
+                    ownerPid: info.ownerPID,
+                    scWindow: nil,
+                    image: nil
+                )
+            }
+
+            // Switch toolbar to confirm phase (smooth transition in-place)
+            self.toolbarPhase = .confirmWindow
+            self.state = .confirming
+        }
+    }
+
+    /// Called from the confirmation HUD to start recording.
+    func startRecordingFromPicker(resize: Bool) {
+        // Toolbar stays visible — phase will change in startRecordingWithResize/startRecording
+        if resize {
+            startRecordingWithResize()
+        } else {
+            startRecording()
+        }
+    }
+
+    /// Cancels the picker and sets toolbar to ready state.
+    func cancelPicker() {
+        // Close all picker overlays, but keep toolbar visible
+        for window in pickerOverlayWindows {
+            window.orderOut(nil)
+            window.close()
+        }
+        pickerOverlayWindows.removeAll()
+        
+        // Reset state
+        hoveredWindowInfo = nil
+        selectedWindow = nil
+        state = .selection
+        toolbarPhase = .ready
+        
+        // Ensure main window is hidden (we are using toolbar as main UI now)
+        hideMainWindow()
+        
+        // Ensure toolbar is visible
+        showFloatingToolbar()
     }
 
     // MARK: - Screen Detection and Coordinate Conversion
 
     /// Finds which screen contains the window (or has the most overlap with it)
     /// windowFrame is in Quartz coordinates (top-left origin)
-    private func findScreenForWindow(windowFrame: CGRect) -> NSScreen {
+    func findScreenForWindow(windowFrame: CGRect) -> NSScreen {
         guard let primaryScreen = NSScreen.screens.first else {
             return NSScreen.main ?? NSScreen.screens.first!
         }
@@ -680,7 +857,7 @@ class AppViewModel: ObservableObject {
     ///   - quartzRect: Rectangle in Quartz coordinates (origin at top-left of primary display, Y down)
     ///   - targetScreen: The screen that will contain the converted rectangle (not currently used, kept for API compatibility)
     /// - Returns: Rectangle in Cocoa coordinates (origin at bottom-left, Y up)
-    private func convertQuartzToCocoa(quartzRect: CGRect, targetScreen: NSScreen) -> CGRect {
+    func convertQuartzToCocoa(quartzRect: CGRect, targetScreen: NSScreen) -> CGRect {
         guard let primaryScreen = NSScreen.screens.first else {
             return quartzRect
         }

@@ -13,12 +13,17 @@ struct ContentView: View {
             } else {
                 VStack {
                     switch viewModel.state {
-                    case .selection:
-                        SelectionView(viewModel: viewModel, windowManager: viewModel.windowManager)
-                            .padding()
-                    case .resizing:
-                        ResizingView(viewModel: viewModel)
-                            .padding()
+                    case .selection, .picking, .confirming, .resizing:
+                        // Main window is hidden during selection/recording phases
+                        // The floating toolbar is the primary UI here
+                        Color.clear
+                            .onAppear {
+                                viewModel.showFloatingToolbar()
+                                // Delay hide to ensure window is fully initialized
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                                    viewModel.hideMainWindow()
+                                }
+                            }
                     case .recording:
                         RecordingView(viewModel: viewModel, screenRecorder: viewModel.screenRecorder)
                             .padding()
@@ -232,242 +237,8 @@ struct OnboardingStep: View {
     }
 }
 
-struct SelectionView: View {
-    @ObservedObject var viewModel: AppViewModel
-    @ObservedObject var windowManager: WindowManager
-    @EnvironmentObject var updateManager: UpdateManager
-
-    let columns = [
-        GridItem(.adaptive(minimum: 200, maximum: 250), spacing: 20)
-    ]
-
-    var body: some View {
-        VStack(spacing: 24) {
-            // Header
-            HStack {
-                Text("Select a Window")
-                    .font(.system(size: 24, weight: .bold))
-                    .foregroundColor(Theme.text)
-                Spacer()
-
-                // Update Available Button (subtle indicator)
-                if updateManager.updateAvailable {
-                    Button(action: {
-                        updateManager.checkForUpdates()
-                    }) {
-                        HStack(spacing: 6) {
-                            Image(systemName: "arrow.down.circle.fill")
-                                .font(.system(size: 14))
-                            Text("Update Available")
-                                .font(.system(size: 13, weight: .medium))
-                        }
-                        .foregroundColor(Theme.accent)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(Theme.accent.opacity(0.12))
-                        .cornerRadius(Theme.cornerRadiusSmall)
-                    }
-                    .buttonStyle(.plain)
-                    .help("Click to update DreamClipper")
-                }
-
-                // Help Button
-                Button(action: {
-                    viewModel.showHelp(context: .selection)
-                }) {
-                    Image(systemName: "questionmark.circle")
-                        .font(.system(size: 20))
-                        .foregroundColor(Theme.textSecondary)
-                }
-                .buttonStyle(.plain)
-                .help("Show Help")
-
-                // Refresh Button
-                Button(action: {
-                    Task { await windowManager.fetchWindows() }
-                }) {
-                    Image(systemName: "arrow.clockwise")
-                        .font(.system(size: 20))
-                        .foregroundColor(Theme.textSecondary)
-                }
-                .buttonStyle(.plain)
-                .help("Refresh Windows")
-            }
-            .padding(.horizontal, 24)
-
-            // Window Grid
-            ScrollView {
-                if windowManager.windows.isEmpty {
-                    EmptyStateView(debugInfo: windowManager.debugInfo)
-                } else {
-                    LazyVGrid(columns: columns, spacing: 20) {
-                        ForEach(windowManager.windows) { window in
-                            WindowCard(window: window, isSelected: viewModel.selectedWindow == window)
-                                .onTapGesture {
-                                    viewModel.selectWindow(window)
-                                }
-                        }
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 8)
-                }
-            }
-
-            // Footer Actions
-            if let _ = viewModel.selectedWindow {
-                Button(action: {
-                    viewModel.startRecordingWithResize()
-                }) {
-                    Text("Start Recording")
-                        .fontWeight(.bold)
-                        .padding(.horizontal, 28)
-                        .padding(.vertical, 12)
-                        .background(Theme.accentGradient)
-                        .foregroundColor(.white)
-                        .cornerRadius(Theme.cornerRadiusMedium)
-                }
-                .buttonStyle(.plain)
-                .padding(.bottom, 20)
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
-        }
-        .onAppear {
-            Task { await windowManager.fetchWindows() }
-        }
-    }
-}
-
-struct WindowCard: View {
-    let window: WindowInfo
-    let isSelected: Bool
-
-    // Check if this is a Dreamcatcher app (app name starts with "Dreamcatcher")
-    private var isDreamcatcherWindow: Bool {
-        window.appName.lowercased().hasPrefix("dreamcatcher")
-    }
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Thumbnail
-            ZStack {
-                Theme.surfaceSecondary
-                if let image = window.image {
-                    Image(nsImage: image)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                } else {
-                    Image(systemName: "macwindow")
-                        .font(.largeTitle)
-                        .foregroundColor(Theme.textTertiary)
-                }
-
-                if isSelected {
-                    ZStack {
-                        Color.black.opacity(0.4)
-                        Image(systemName: "checkmark.circle.fill")
-                            .font(.system(size: 40))
-                            .foregroundColor(Theme.accent)
-                    }
-                }
-            }
-            .frame(height: 140)
-
-            // Info
-            VStack(alignment: .leading, spacing: 4) {
-                Text(window.appName)
-                    .font(.system(size: 14, weight: .semibold))
-                    .foregroundColor(Theme.text)
-                Text(window.name)
-                    .font(.system(size: 12))
-                    .foregroundColor(Theme.textSecondary)
-                    .lineLimit(1)
-            }
-            .padding(14)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(Theme.surface)
-        }
-        .cornerRadius(Theme.cornerRadiusLarge)
-        .overlay(
-            RoundedRectangle(cornerRadius: Theme.cornerRadiusLarge)
-                .stroke(
-                    isSelected ? Theme.accent :
-                    isDreamcatcherWindow ? Theme.accent.opacity(0.7) :
-                    Theme.border,
-                    lineWidth: isSelected ? 2.5 : isDreamcatcherWindow ? 2 : 1
-                )
-        )
-    }
-}
 
 
-
-struct EmptyStateView: View {
-    let debugInfo: String
-
-    var body: some View {
-        VStack(spacing: 24) {
-            Image(systemName: "macwindow.on.rectangle")
-                .font(.system(size: 60))
-                .foregroundColor(Theme.textTertiary)
-
-            Text("No windows found")
-                .font(.title2)
-                .foregroundColor(Theme.textSecondary)
-
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Debug Info:")
-                    .font(.caption)
-                    .bold()
-                    .foregroundColor(Theme.textSecondary)
-
-                Text(debugInfo)
-                    .font(.caption2)
-                    .monospaced()
-                    .foregroundColor(Theme.textSecondary)
-                    .padding(16)
-                    .background(Theme.surfaceSecondary)
-                    .cornerRadius(Theme.cornerRadiusMedium)
-            }
-            .padding(.top)
-        }
-        .padding(48)
-    }
-}
-
-struct ResizingView: View {
-    @ObservedObject var viewModel: AppViewModel
-
-    var body: some View {
-        VStack(spacing: 40) {
-            ZStack {
-                Circle()
-                    .stroke(Theme.accent.opacity(0.2), lineWidth: 4)
-                    .frame(width: 100, height: 100)
-
-                Circle()
-                    .fill(Theme.accent)
-                    .frame(width: 80, height: 80)
-                    .pulseEffect()
-            }
-
-            VStack(spacing: 10) {
-                Text("Resizing Window")
-                    .font(.title)
-                    .foregroundColor(Theme.text)
-
-                if let message = viewModel.resizeFailureMessage {
-                    Text(message)
-                        .foregroundColor(.orange)
-                        .multilineTextAlignment(.center)
-                        .padding(.horizontal, 40)
-                } else {
-                    Text("Adjusting to 16:9 aspect ratio...")
-                        .foregroundColor(Theme.textSecondary)
-                }
-            }
-        }
-    }
-}
 
 struct RecordingView: View {
     @ObservedObject var viewModel: AppViewModel
@@ -594,14 +365,28 @@ struct EditingView: View {
                                 .textCase(.uppercase)
                                 .fixedSize()
 
-                            Picker("Framerate", selection: $viewModel.targetFramerate) {
-                                Text("15").tag(15)
-                                Text("30").tag(30)
-                                Text("60").tag(60)
+                            HStack(spacing: 8) {
+                                ForEach([15, 30, 60], id: \.self) { rate in
+                                    Button(action: {
+                                        viewModel.targetFramerate = rate
+                                    }) {
+                                        Text("\(rate)")
+                                            .font(.system(size: 12, weight: viewModel.targetFramerate == rate ? .semibold : .medium))
+                                            .foregroundColor(viewModel.targetFramerate == rate ? Theme.text : Theme.textSecondary)
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 6)
+                                            .background(
+                                                Capsule()
+                                                    .fill(viewModel.targetFramerate == rate ? Color.white.opacity(0.15) : Color.clear)
+                                                    .overlay(
+                                                        Capsule()
+                                                            .stroke(Theme.borderLight, lineWidth: viewModel.targetFramerate == rate ? 1 : 0.5)
+                                                    )
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
                             }
-                            .pickerStyle(.segmented)
-                            .frame(width: 140)
-                            .labelsHidden()
                         }
 
                         // Resolution Column
@@ -612,13 +397,45 @@ struct EditingView: View {
                                 .textCase(.uppercase)
                                 .fixedSize()
 
-                            Picker("Resolution", selection: $viewModel.resolution) {
-                                Text("1080p").tag(GifResolution.fullHD)
-                                Text("720p").tag(GifResolution.hd)
+                            HStack(spacing: 8) {
+                                Button(action: {
+                                    viewModel.resolution = .fullHD
+                                }) {
+                                    Text("1080p")
+                                        .font(.system(size: 12, weight: viewModel.resolution == .fullHD ? .semibold : .medium))
+                                        .foregroundColor(viewModel.resolution == .fullHD ? Theme.text : Theme.textSecondary)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(viewModel.resolution == .fullHD ? Color.white.opacity(0.15) : Color.clear)
+                                                .overlay(
+                                                    Capsule()
+                                                        .stroke(Theme.borderLight, lineWidth: viewModel.resolution == .fullHD ? 1 : 0.5)
+                                                )
+                                        )
+                                }
+                                .buttonStyle(.plain)
+
+                                Button(action: {
+                                    viewModel.resolution = .hd
+                                }) {
+                                    Text("720p")
+                                        .font(.system(size: 12, weight: viewModel.resolution == .hd ? .semibold : .medium))
+                                        .foregroundColor(viewModel.resolution == .hd ? Theme.text : Theme.textSecondary)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(viewModel.resolution == .hd ? Color.white.opacity(0.15) : Color.clear)
+                                                .overlay(
+                                                    Capsule()
+                                                        .stroke(Theme.borderLight, lineWidth: viewModel.resolution == .hd ? 1 : 0.5)
+                                                )
+                                        )
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .pickerStyle(.segmented)
-                            .frame(width: 140)
-                            .labelsHidden()
                         }
                     }
                 }
@@ -664,10 +481,10 @@ struct EditingView: View {
                         .padding(.horizontal, 18)
                         .padding(.vertical, 10)
                         .background(
-                            RoundedRectangle(cornerRadius: Theme.cornerRadiusSmall)
+                            Capsule()
                                 .fill(isHoveringDiscard ? Theme.surfaceHover : Theme.surfaceSecondary)
                         )
-                        .contentShape(Rectangle())
+                        .contentShape(Capsule())
                     }
                     .buttonStyle(.plain)
                     .onHover { isHoveringDiscard = $0 }
@@ -681,12 +498,13 @@ struct EditingView: View {
                                 .font(.system(size: 14))
                             Text("Export GIF")
                                 .font(.system(size: 13, weight: .bold))
+                                .fixedSize() // Ensure text stays on one line
                         }
                         .foregroundColor(.white)
                         .padding(.horizontal, 22)
                         .padding(.vertical, 11)
                         .background(Theme.accentGradient)
-                        .cornerRadius(Theme.cornerRadiusSmall)
+                        .clipShape(Capsule())
                         .scaleEffect(isHoveringExport ? 1.02 : 1.0)
                         .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHoveringExport)
                     }
@@ -1128,11 +946,11 @@ struct DoneView: View {
                     .padding(.horizontal, 24)
                     .padding(.vertical, 14)
                     .background(
-                        RoundedRectangle(cornerRadius: Theme.cornerRadiusMedium)
+                        Capsule()
                             .fill(isHoveringFolder ? Theme.surfaceHover : Theme.surfaceSecondary)
                     )
                     .overlay(
-                        RoundedRectangle(cornerRadius: Theme.cornerRadiusMedium)
+                        Capsule()
                             .stroke(Theme.border, lineWidth: 1)
                     )
                 }
@@ -1153,7 +971,7 @@ struct DoneView: View {
                     .padding(.horizontal, 28)
                     .padding(.vertical, 14)
                     .background(Theme.accentGradient)
-                    .cornerRadius(Theme.cornerRadiusMedium)
+                    .clipShape(Capsule())
                     .scaleEffect(isHoveringNew ? 1.03 : 1.0)
                     .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isHoveringNew)
                 }
@@ -1217,6 +1035,7 @@ enum HelpContext {
 struct HelpView: View {
     let context: HelpContext
     @ObservedObject var viewModel: AppViewModel
+    @EnvironmentObject var updateManager: UpdateManager
     @State private var selectedTab: HelpTab = .contextHelp
 
     enum HelpTab {
@@ -1263,8 +1082,33 @@ struct HelpView: View {
 
                     Spacer()
 
-                    // Invisible placeholder for balance
-                    Color.clear.frame(width: 90)
+                    // Update Available button or invisible placeholder for balance
+                    if updateManager.updateAvailable {
+                        Button(action: {
+                            updateManager.checkForUpdates()
+                        }) {
+                            HStack(spacing: 6) {
+                                Image(systemName: "arrow.down.circle.fill")
+                                    .font(.system(size: 13))
+                                if let version = updateManager.updateVersion {
+                                    Text("Update v\(version)")
+                                        .font(.system(size: 12, weight: .semibold))
+                                } else {
+                                    Text("Update Available")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
+                            }
+                            .foregroundColor(Color(hex: "FF9500"))
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 6)
+                            .background(Color(hex: "FF9500").opacity(0.12))
+                            .cornerRadius(Theme.cornerRadiusSmall)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Click to update DreamClipper")
+                    } else {
+                        Color.clear.frame(width: 90)
+                    }
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 16)
@@ -1368,11 +1212,11 @@ struct OnboardingHelp: View {
 
             HelpSection(title: "Granting Permissions", icon: "lock.open.fill") {
                 VStack(alignment: .leading, spacing: 10) {
-                    HelpStep(number: 1, text: "Click 'Open Settings' for Accessibility Permission")
+                    HelpStep(number: 1, text: "Click 'Open Settings' if prompted for permissions")
                     HelpStep(number: 2, text: "In System Settings, enable DreamClipper in the Accessibility list")
                     HelpStep(number: 3, text: "Return to DreamClipper (permission will be detected automatically)")
                     HelpStep(number: 4, text: "Repeat for Screen Recording Permission")
-                    HelpStep(number: 5, text: "Click 'Get Started' when both permissions are granted")
+                    HelpStep(number: 5, text: "The app is ready when you see the 'Select Window' toolbar")
                 }
             }
 
@@ -1380,6 +1224,7 @@ struct OnboardingHelp: View {
                 VStack(alignment: .leading, spacing: 12) {
                     HelpBullet(title: "Permission not detected?", description: "Try quitting and restarting DreamClipper after granting permissions.")
                     HelpBullet(title: "Can't find DreamClipper in Settings?", description: "Click 'Open Settings' again - this will trigger macOS to add the app to the list.")
+                    HelpBullet(title: "Blank Window?", description: "If you see a blank window, try clicking the 'x' on the toolbar to quit and relaunch.")
                 }
             }
         }
@@ -1391,13 +1236,11 @@ struct SelectionHelp: View {
         VStack(alignment: .leading, spacing: 28) {
             HelpSection(title: "Selecting a Window", icon: "macwindow") {
                 VStack(alignment: .leading, spacing: 14) {
-                    Text("Choose the window you want to record from the grid. DreamClipper will automatically resize it to 1920x1080 (16:9) and position it at the top of your screen.")
+                    Text("Click 'Select Window' on the toolbar to begin. Choose a window from the grid to record. DreamClipper will automatically resize it to 1920x1080 (16:9).")
                         .font(.system(size: 14))
                         .foregroundColor(Theme.textSecondary)
 
                     HelpBullet(title: "Window Requirements", description: "Windows must be visible, have a title, and be at least 200x200 pixels.")
-
-                    HelpBullet(title: "Dreamcatcher Windows", description: "Apps with 'Dreamcatcher' in the app name are highlighted with a purple glow for easy identification.")
 
                     HelpBullet(title: "Refresh", description: "Click the refresh icon if you don't see your window, or if you've opened a new window since launching the app.")
                 }
