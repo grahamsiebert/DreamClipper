@@ -454,14 +454,6 @@ struct EditingView: View {
                         .fill(Theme.border)
                         .frame(width: 1, height: 36)
                 }
-                .overlay(alignment: .bottom) {
-                    // Warning tooltip floats below the size indicator, outside the layout flow
-                    if viewModel.showSizeWarning {
-                        SizeWarningTooltip(isShowing: $viewModel.showSizeWarning)
-                            .fixedSize()
-                            .offset(y: 52)
-                    }
-                }
                 .animation(.easeInOut(duration: 0.2), value: viewModel.showSizeWarning)
 
                 Spacer()
@@ -516,8 +508,18 @@ struct EditingView: View {
             .padding(24)
             .background(Theme.surface)
             .cornerRadius(Theme.cornerRadiusXL)
+            .overlay(alignment: .bottom) {
+                // Warning tooltip floats below the controls card, outside clipping bounds
+                if viewModel.showSizeWarning {
+                    SizeWarningTooltip(isShowing: $viewModel.showSizeWarning)
+                        .fixedSize()
+                        .offset(y: 56)
+                }
+            }
+            .animation(.easeInOut(duration: 0.2), value: viewModel.showSizeWarning)
+            .zIndex(1)
             .padding(.horizontal, 24)
-            .padding(.bottom, 24)
+            .padding(.bottom, viewModel.showSizeWarning ? 90 : 24)
         }
     }
 }
