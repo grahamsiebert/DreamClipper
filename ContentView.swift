@@ -443,22 +443,23 @@ struct EditingView: View {
                 Spacer()
 
                 // Estimated Size with Warning Tooltip
-                VStack(spacing: 8) {
-                    HStack(spacing: 16) {
-                        Rectangle()
-                            .fill(Theme.border)
-                            .frame(width: 1, height: 36)
+                HStack(spacing: 16) {
+                    Rectangle()
+                        .fill(Theme.border)
+                        .frame(width: 1, height: 36)
 
-                        EstimatedSizeView(viewModel: viewModel)
+                    EstimatedSizeView(viewModel: viewModel)
 
-                        Rectangle()
-                            .fill(Theme.border)
-                            .frame(width: 1, height: 36)
-                    }
-
-                    // Warning tooltip appears below the size estimate
+                    Rectangle()
+                        .fill(Theme.border)
+                        .frame(width: 1, height: 36)
+                }
+                .overlay(alignment: .bottom) {
+                    // Warning tooltip floats below the size indicator, outside the layout flow
                     if viewModel.showSizeWarning {
                         SizeWarningTooltip(isShowing: $viewModel.showSizeWarning)
+                            .fixedSize()
+                            .offset(y: 52)
                     }
                 }
                 .animation(.easeInOut(duration: 0.2), value: viewModel.showSizeWarning)
