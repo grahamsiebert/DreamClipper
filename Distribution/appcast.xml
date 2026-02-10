@@ -8,157 +8,25 @@
 
         <!-- Add new versions here (newest first) -->
         <item>
-            <title>Version 1.1.7</title>
-            <description><![CDATA[
-                <h2>Bug Fixes</h2>
-                <ul>
-                    <li>Fixed framerate buttons getting bunched up when the file size warning is shown</li>
-                </ul>
-            ]]></description>
-            <pubDate>Mon, 10 Feb 2026 22:00:00 +0000</pubDate>
-            <sparkle:version>9</sparkle:version>
-            <sparkle:shortVersionString>1.1.7</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <enclosure
-                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.7/DreamClipper-1.1.7.dmg"
-                sparkle:edSignature="8TCZVjTd1+w1HLGGLAaYrxuOquT+S5JaaZ7w3Gyx+t1V8fqiTEUjFBpXRwqLZgkCoZyURc/AnVh7D/GTAunJAw=="
-                length="3720236"
-                type="application/octet-stream" />
-        </item>
-        <item>
-            <title>Version 1.1.6</title>
-            <description><![CDATA[
-                <h2>Bug Fixes</h2>
-                <ul>
-                    <li>Fixed crash on first launch when permissions have not been granted yet</li>
-                    <li>Onboarding screen now displays correctly on fresh installs</li>
-                </ul>
-            ]]></description>
-            <pubDate>Mon, 10 Feb 2026 18:00:00 +0000</pubDate>
-            <sparkle:version>8</sparkle:version>
-            <sparkle:shortVersionString>1.1.6</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <enclosure
-                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.6/DreamClipper-1.1.6.dmg"
-                sparkle:edSignature="zn8gj+NnvrN8b4Pm1zqsqz8tn1gpTHhQ8u4iDnoCUY5cNanaakjmOk2igUcik3QwY1eVZrfhUUQpQGlcpa3aDw=="
-                length="3720662"
-                type="application/octet-stream" />
-        </item>
-        <item>
-            <title>Version 1.1.5</title>
-            <description><![CDATA[
-                <h2>Improvements</h2>
-                <ul>
-                    <li>New floating toolbar UI replaces the window selection screen</li>
-                    <li>Update-available badge on the help button in the floating toolbar</li>
-                    <li>Update notification in the Help & Support modal</li>
-                    <li>Full-screen and multi-desktop window fixes</li>
-                </ul>
-            ]]></description>
-            <pubDate>Tue, 10 Feb 2026 12:00:00 +0000</pubDate>
-            <sparkle:version>7</sparkle:version>
-            <sparkle:shortVersionString>1.1.5</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <enclosure
-                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.5/DreamClipper-1.1.5.dmg"
-                sparkle:edSignature="qVHtZlruLGWzeUWiwFqlviTLbKz3dNexeVFoVVN9qCul2grjL5DI42+HIpRh7Mc0b6kZRtlkWm4s8wBpTLpxBA=="
-                length="3721238"
-                type="application/octet-stream" />
-        </item>
-        <item>
-            <title>Version 1.1.3</title>
-            <description><![CDATA[
-                <h2>Improvements</h2>
-                <ul>
-                    <li>About page now shows the correct version dynamically</li>
-                    <li>Added "Automatic Updates" to the feature list</li>
-                </ul>
-            ]]></description>
-            <pubDate>Sun, 09 Feb 2026 12:30:00 +0000</pubDate>
-            <sparkle:version>5</sparkle:version>
-            <sparkle:shortVersionString>1.1.3</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <enclosure
-                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.3/DreamClipper-1.1.3.dmg"
-                sparkle:edSignature="3LNA5qyLZGcykLOxRcuXJU0Sm7Qg46JykMzy+GPmD62c9SZ37gRQ+IpSO/KkmOIgNZgfRCSYi9dZitbCwkyJAQ=="
-                length="3562646"
-                type="application/octet-stream" />
-        </item>
-        <item>
-            <title>Version 1.1.2</title>
-            <description><![CDATA[
-                <h2>Improvements</h2>
-                <ul>
-                    <li>Update notifications are now subtle and non-intrusive</li>
-                    <li>A small "Update Available" button appears in the header when updates are ready</li>
-                </ul>
-            ]]></description>
-            <pubDate>Sun, 09 Feb 2026 12:00:00 +0000</pubDate>
-            <sparkle:version>4</sparkle:version>
-            <sparkle:shortVersionString>1.1.2</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <enclosure
-                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.2/DreamClipper-1.1.2.dmg"
-                sparkle:edSignature="/I5pjevZOLaW7/ppR5SuyNpiAN0FJc6i7XzwDJGdLBm5zL3KA0kV2h/0zT7SgC7LM2LWIVqTF6d6BQ6H2u2iCg=="
-                length="3561002"
-                type="application/octet-stream" />
-        </item>
-        <item>
-            <title>Version 1.1.1</title>
-            <description><![CDATA[
-                <h2>Improvements</h2>
-                <ul>
-                    <li>App now checks for updates automatically on launch</li>
-                </ul>
-            ]]></description>
-            <pubDate>Sun, 09 Feb 2026 11:30:00 +0000</pubDate>
-            <sparkle:version>3</sparkle:version>
-            <sparkle:shortVersionString>1.1.1</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <enclosure
-                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.1/DreamClipper-1.1.1.dmg"
-                sparkle:edSignature="7FTX5i4QxNIABnobry7OQgyXNoR1CUvXmnHaLsV3ELBIc1G6EmsJOXX7DvAdGMJQ8aGELITrWI9mhDbNarMaBg=="
-                length="3541255"
-                type="application/octet-stream" />
-        </item>
-        <item>
-            <title>Version 1.1.0</title>
-            <description><![CDATA[
-                <h2>Bug Fixes</h2>
-                <ul>
-                    <li>Windows on other Desktops/Spaces now appear in the window list</li>
-                    <li>Fixed window resize not working on first recording attempt</li>
-                </ul>
-            ]]></description>
-            <pubDate>Sun, 09 Feb 2026 11:00:00 +0000</pubDate>
-            <sparkle:version>2</sparkle:version>
-            <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
-            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
-            <enclosure
-                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.0/DreamClipper-1.1.0.dmg"
-                sparkle:edSignature="YdqtU6Oym/9Hr18TeaMuxAR4LTmEj2mT8cWnUbs778YUSjaDiBUCnT+O2Dumc8yfjVYypmyK8FXAGO4O4y20CA=="
-                length="3538805"
-                type="application/octet-stream" />
-        </item>
-        <item>
             <title>Version 1.0.0</title>
             <description><![CDATA[
                 <h2>Initial Release</h2>
                 <ul>
-                    <li>Window-based screen recording</li>
-                    <li>GIF export with trim and frame rate controls</li>
-                    <li>Resolution options (1080p, 720p)</li>
-                    <li>Real-time file size estimation</li>
+                    <li>Window-based screen recording with automatic resizing</li>
+                    <li>GIF export with trim, frame rate, and resolution controls</li>
+                    <li>Real-time file size estimation with warnings</li>
+                    <li>Floating toolbar UI</li>
+                    <li>Automatic updates via Sparkle</li>
                 </ul>
             ]]></description>
-            <pubDate>Sun, 09 Feb 2026 09:30:00 +0000</pubDate>
+            <pubDate>Mon, 10 Feb 2026 16:00:00 +0000</pubDate>
             <sparkle:version>1</sparkle:version>
             <sparkle:shortVersionString>1.0.0</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <enclosure
                 url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.0.0/DreamClipper-1.0.0.dmg"
-                sparkle:edSignature="jqRN91XaAc+MVPUrHGxQMn9AGGD8GOG1KgCPcHS3dAFId7x1QXUTaO3drmvkehTpNWImn83oKe1D1csF6pzOCA=="
-                length="3674792"
+                sparkle:edSignature=""
+                length="0"
                 type="application/octet-stream" />
         </item>
     </channel>
