@@ -1,5 +1,6 @@
 import SwiftUI
 import Sparkle
+import ApplicationServices
 
 @main
 struct DreamClipperApp: App {
@@ -43,26 +44,28 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationWillTerminate(_ notification: Notification) {
         // App termination logic is handled by the system mostly
     }
-    
+
     func applicationDidFinishLaunching(_ notification: Notification) {
-        // Hide the main window if we are starting in the toolbar-only mode
-        // We defer slightly to let the window be created first
+        // Only hide the main window if both permissions are already granted.
+        // When permissions are missing (e.g. fresh install), the main window must
+        // stay visible so the user can see the OnboardingView to grant permissions.
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            let hasAccessibility = AXIsProcessTrustedWithOptions(nil)
+            let hasScreenRecording = CGPreflightScreenCaptureAccess()
+
+            guard hasAccessibility && hasScreenRecording else { return }
+
             for window in NSApp.windows {
-                // Determine if this is the main window (it won't be one of our special windows yet)
-                // Actually, the main window is the only one at launch usually
                 if !(window is RecordingOverlayWindow || window is SecondaryOverlayWindow || window is FloatingToolbarWindow) {
-                    // Check if we should hide it
-                    // effectively we hide all standard windows on launch
                     window.orderOut(nil)
                 }
             }
         }
-        
     }
 
     func applicationShouldTerminateAfterLastWindowClosed(_ sender: NSApplication) -> Bool {
-        // Quit app when main window is closed
-        return true
+        // Return false — the app hides its main window when using the floating toolbar.
+        // Quit is handled explicitly via NSApp.terminate(nil) from the toolbar close button.
+        return false
     }
 }

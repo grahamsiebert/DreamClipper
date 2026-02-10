@@ -8,6 +8,25 @@
 
         <!-- Add new versions here (newest first) -->
         <item>
+            <title>Version 1.1.6</title>
+            <description><![CDATA[
+                <h2>Bug Fixes</h2>
+                <ul>
+                    <li>Fixed crash on first launch when permissions have not been granted yet</li>
+                    <li>Onboarding screen now displays correctly on fresh installs</li>
+                </ul>
+            ]]></description>
+            <pubDate>Mon, 10 Feb 2026 18:00:00 +0000</pubDate>
+            <sparkle:version>8</sparkle:version>
+            <sparkle:shortVersionString>1.1.6</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.6/DreamClipper-1.1.6.dmg"
+                sparkle:edSignature="zn8gj+NnvrN8b4Pm1zqsqz8tn1gpTHhQ8u4iDnoCUY5cNanaakjmOk2igUcik3QwY1eVZrfhUUQpQGlcpa3aDw=="
+                length="3720662"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.1.5</title>
             <description><![CDATA[
                 <h2>Improvements</h2>
