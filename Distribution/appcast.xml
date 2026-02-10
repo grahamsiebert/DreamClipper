@@ -8,6 +8,27 @@
 
         <!-- Add new versions here (newest first) -->
         <item>
+            <title>Version 1.1.5</title>
+            <description><![CDATA[
+                <h2>Improvements</h2>
+                <ul>
+                    <li>New floating toolbar UI replaces the window selection screen</li>
+                    <li>Update-available badge on the help button in the floating toolbar</li>
+                    <li>Update notification in the Help & Support modal</li>
+                    <li>Full-screen and multi-desktop window fixes</li>
+                </ul>
+            ]]></description>
+            <pubDate>Tue, 10 Feb 2026 12:00:00 +0000</pubDate>
+            <sparkle:version>7</sparkle:version>
+            <sparkle:shortVersionString>1.1.5</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <enclosure
+                url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.1.5/DreamClipper-1.1.5.dmg"
+                sparkle:edSignature="qVHtZlruLGWzeUWiwFqlviTLbKz3dNexeVFoVVN9qCul2grjL5DI42+HIpRh7Mc0b6kZRtlkWm4s8wBpTLpxBA=="
+                length="3721238"
+                type="application/octet-stream" />
+        </item>
+        <item>
             <title>Version 1.1.3</title>
             <description><![CDATA[
                 <h2>Improvements</h2>
