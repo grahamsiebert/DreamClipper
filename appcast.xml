@@ -25,8 +25,8 @@
             <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
             <enclosure
                 url="https://github.com/grahamsiebert/DreamClipper/releases/download/v1.0.0/DreamClipper-1.0.0.dmg"
-                sparkle:edSignature=""
-                length="0"
+                sparkle:edSignature="Oq0MVs8hGfxGl+uOzomkqy+gf5990bqgMEVp9NhqD5MCvJcIqcjFwg4sLEBd+gBfM3x27oLfNRzkFsTczxPFAQ=="
+                length="3722059"
                 type="application/octet-stream" />
         </item>
     </channel>
