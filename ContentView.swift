@@ -366,13 +366,15 @@ struct EditingView: View {
                                 .fixedSize()
 
                             HStack(spacing: 8) {
-                                ForEach([15, 30, 60], id: \.self) { rate in
+                                ForEach([10, 15, 30, 60], id: \.self) { rate in
                                     Button(action: {
                                         viewModel.targetFramerate = rate
                                     }) {
                                         Text("\(rate)")
                                             .font(.system(size: 12, weight: viewModel.targetFramerate == rate ? .semibold : .medium))
                                             .foregroundColor(viewModel.targetFramerate == rate ? Theme.text : Theme.textSecondary)
+                                            .lineLimit(1)
+                                            .fixedSize()
                                             .padding(.horizontal, 16)
                                             .padding(.vertical, 6)
                                             .background(
@@ -399,19 +401,19 @@ struct EditingView: View {
 
                             HStack(spacing: 8) {
                                 Button(action: {
-                                    viewModel.resolution = .fullHD
+                                    viewModel.resolution = .sd
                                 }) {
-                                    Text("1080p")
-                                        .font(.system(size: 12, weight: viewModel.resolution == .fullHD ? .semibold : .medium))
-                                        .foregroundColor(viewModel.resolution == .fullHD ? Theme.text : Theme.textSecondary)
+                                    Text("480p")
+                                        .font(.system(size: 12, weight: viewModel.resolution == .sd ? .semibold : .medium))
+                                        .foregroundColor(viewModel.resolution == .sd ? Theme.text : Theme.textSecondary)
                                         .padding(.horizontal, 16)
                                         .padding(.vertical, 6)
                                         .background(
                                             Capsule()
-                                                .fill(viewModel.resolution == .fullHD ? Color.white.opacity(0.15) : Color.clear)
+                                                .fill(viewModel.resolution == .sd ? Color.white.opacity(0.15) : Color.clear)
                                                 .overlay(
                                                     Capsule()
-                                                        .stroke(Theme.borderLight, lineWidth: viewModel.resolution == .fullHD ? 1 : 0.5)
+                                                        .stroke(Theme.borderLight, lineWidth: viewModel.resolution == .sd ? 1 : 0.5)
                                                 )
                                         )
                                 }
@@ -431,6 +433,25 @@ struct EditingView: View {
                                                 .overlay(
                                                     Capsule()
                                                         .stroke(Theme.borderLight, lineWidth: viewModel.resolution == .hd ? 1 : 0.5)
+                                                )
+                                        )
+                                }
+                                .buttonStyle(.plain)
+
+                                Button(action: {
+                                    viewModel.resolution = .fullHD
+                                }) {
+                                    Text("1080p")
+                                        .font(.system(size: 12, weight: viewModel.resolution == .fullHD ? .semibold : .medium))
+                                        .foregroundColor(viewModel.resolution == .fullHD ? Theme.text : Theme.textSecondary)
+                                        .padding(.horizontal, 16)
+                                        .padding(.vertical, 6)
+                                        .background(
+                                            Capsule()
+                                                .fill(viewModel.resolution == .fullHD ? Color.white.opacity(0.15) : Color.clear)
+                                                .overlay(
+                                                    Capsule()
+                                                        .stroke(Theme.borderLight, lineWidth: viewModel.resolution == .fullHD ? 1 : 0.5)
                                                 )
                                         )
                                 }
@@ -1573,7 +1594,7 @@ struct ShimmerText: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 16, weight: .bold, design: .monospaced))
+            .font(.system(size: 13, weight: .bold, design: .monospaced))
             .foregroundColor(Theme.textSecondary)
             .overlay(
                 GeometryReader { geometry in
@@ -1590,7 +1611,7 @@ struct ShimmerText: View {
                     .offset(x: shimmerOffset * geometry.size.width)
                     .mask(
                         Text(text)
-                            .font(.system(size: 16, weight: .bold, design: .monospaced))
+                            .font(.system(size: 13, weight: .bold, design: .monospaced))
                     )
                 }
             )
@@ -1689,6 +1710,7 @@ struct EstimatedSizeView: View {
 
             if viewModel.isCalculating {
                 ShimmerText(text: "Calculating...")
+                    .fixedSize()
             } else {
                 Text(viewModel.estimatedFileSize)
                     .font(.system(size: 16, weight: .bold, design: .monospaced))

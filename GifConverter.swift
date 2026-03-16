@@ -7,11 +7,13 @@ import UniformTypeIdentifiers
 enum GifResolution: String, CaseIterable {
     case fullHD = "1080p"
     case hd = "720p"
-    
+    case sd = "480p"
+
     var size: (width: Int, height: Int) {
         switch self {
         case .fullHD: return (1920, 1080)
         case .hd: return (1280, 720)
+        case .sd: return (854, 480)
         }
     }
 }
